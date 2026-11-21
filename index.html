@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0f766e">
+<title>Calendario Ahorro 52 Semanas</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--p:#0f766e;--bg:#f0fdfa;--b:#cbd5e1}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#f1f5f9;padding:calc(12px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));color:#1e293b;user-select:none}
+.bar{background:#fff;padding:12px;border-radius:10px;border:1px solid var(--b);margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}
+.bar label{font-size:11.5px;font-weight:700;display:flex;flex-direction:column;color:#334155}
+.bar label.full{grid-column:1/-1}
+.bar label.hide{display:none}
+input,select{margin-top:4px;padding:8px;border:1px solid var(--b);border-radius:6px;font-size:14px;background:#fff;color:#0f172a;width:100%}
+.btns{grid-column:1/-1;display:flex;gap:8px;margin-top:4px}
+button{flex:1;background:var(--p);color:#fff;border:none;padding:11px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}
+button:active{opacity:.85}
+button.rst{background:#dc2626}
+.prog-box{background:#fff;padding:12px;border-radius:10px;border:1px solid var(--b);margin-bottom:12px}
+.prog-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;font-weight:700}
+.prog-top span:first-child{color:var(--p)}
+.prog-bar{width:100%;height:14px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#0d9488,#0f766e);width:0%;transition:width .3s ease}
+.prog-sub{display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-top:5px}
+.sheet{background:#fff;padding:14px;border-radius:10px;border:1px solid var(--b);max-width:850px;margin:auto}
+.hdr{text-align:center;border-bottom:2px solid var(--p);padding-bottom:8px;margin-bottom:12px}
+.hdr h1{color:var(--p);font-size:16px}
+.hdr p{color:#64748b;font-size:11px;margin-top:3px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.c{background:var(--bg);border:1px solid #99f6e4;border-radius:6px;padding:8px 4px;text-align:center}
+.c b{color:var(--p);font-size:12.5px;display:block}
+.c span{color:#475569;font-size:10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--p);color:#fff;padding:7px 3px}
+td{padding:6px 3px;border-bottom:1px solid #e2e8f0;text-align:center}
+tr:nth-child(even){background:#f8fafc}
+tr.done{background:#f0fdfa}
+.ap{color:var(--p);font-weight:700}
+.box{width:18px;height:18px;border:1.8px solid var(--p);display:inline-flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;vertical-align:middle;font-size:11px;color:#fff;font-weight:700}
+.box.ok{background:var(--p)}
+.box.ok::after{content:"✓"}
+.ft{text-align:center;color:#64748b;font-size:10.5px;margin-top:12px;line-height:1.4}
+@media(max-width:650px){.cards{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <label class="full">Tipo de reto escalonado
+    <select id="tipo">
+      <option value="clasico">1. Clásico (Solo cuota inicial)</option>
+      <option value="cuotas">2. Cuota Inicial + Cuota Final</option>
+      <option value="meta">3. Meta Total + Cuota Final</option>
+    </select>
+  </label>
+  <label id="box-ini">Cuota inicial<input type="number" id="ini" value="50" min="1"></label>
+  <label id="box-meta" class="hide">Meta total a fin de año<input type="number" id="meta" value="20000" min="52"></label>
+  <label id="box-fin" class="hide">Cuota final (máxima)<input type="number" id="fin" value="1000" min="1"></label>
+  <label>Orden semanal
+    <select id="ord">
+      <option value="asc">Ascendente (Menor a mayor)</option>
+      <option value="desc">Inverso (Mayor a menor)</option>
+    </select>
+  </label>
+  <label>Fecha inicio<input type="date" id="fec"></label>
+  <label>Moneda<input type="text" id="mon" value="L" maxlength="4"></label>
+  <div class="btns">
+    <button onclick="makePDF()">Guardar / Compartir PDF</button>
+    <button class="rst" onclick="rst()">Reiniciar</button>
+  </div>
+</div>
+
+<div class="prog-box">
+  <div class="prog-top">
+    <span id="p-saved">Ahorrado: L0</span>
+    <span id="p-pct">0% (0/52 sem)</span>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="p-fill"></div></div>
+  <div class="prog-sub">
+    <span id="p-rem">Falta: L0</span>
+    <span id="p-goal">Meta: L0</span>
+  </div>
+</div>
+
+<div class="sheet">
+  <div class="hdr">
+    <h1 id="tit"></h1>
+    <p id="sub"></p>
+  </div>
+  <div class="cards">
+    <div class="c"><b id="c1"></b><span>Fecha de inicio</span></div>
+    <div class="c"><b id="c2"></b><span>Fecha de cierre</span></div>
+    <div class="c"><b id="c3"></b><span>Rango semanal</span></div>
+    <div class="c"><b id="c4"></b><span>Total acumulado</span></div>
+  </div>
+  <div class="cols">
+    <table><thead><tr><th>Semana</th><th>Fecha</th><th>Aporte</th><th>Acumulado</th><th>Listo</th></tr></thead><tbody id="t1"></tbody></table>
+    <table><thead><tr><th>Semana</th><th>Fecha</th><th>Aporte</th><th>Acumulado</th><th>Listo</th></tr></thead><tbody id="t2"></tbody></table>
+  </div>
+  <div class="ft">Consejo: Toca cualquier casilla para marcar tu ahorro semanal y ver avanzar tu barra de progreso.</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let st=JSON.parse(localStorage.getItem('app52v6')||'{}');
+$('tipo').value=st.tipo||'clasico';
+$('ini').value=st.ini||50;
+$('fin').value=st.fin||1000;
+$('meta').value=st.meta||20000;
+$('mon').value=st.mon||'L';
+$('ord').value=st.ord||'asc';
+if(st.fec)$('fec').value=st.fec;else $('fec').valueAsDate=new Date();
+
+let chk=st.chk||{},rows=[];
+const fmt=n=>new Intl.NumberFormat('es-HN',{maximumFractionDigits:2}).format(n);
+const fDate=d=>d.toLocaleDateString('es-HN',{day:'2-digit',month:'2-digit',year:'numeric'});
+const mYr=d=>d.toLocaleDateString('es-HN',{month:'long',year:'numeric'});
+
+function toggleInputs(){
+  const t=$('tipo').value;
+  $('box-ini').classList.toggle('hide',t==='meta');
+  $('box-fin').classList.toggle('hide',t==='clasico');
+  $('box-meta').classList.toggle('hide',t!=='meta');
+}
+
+function calcPlan(){
+  const tipo=$('tipo').value;
+  let ini=Math.max(1,parseFloat($('ini').value)||50);
+  let fin=Math.max(1,parseFloat($('fin').value)||1000);
+  const meta=Math.max(52,parseFloat($('meta').value)||20000);
+  let arr=[];
+
+  if(tipo==='clasico'){
+    for(let i=1;i<=52;i++)arr.push(Math.round(ini*i*100)/100);
+  }else if(tipo==='cuotas'){
+    if(fin<ini)fin=ini;
+    const step=(fin-ini)/51;
+    for(let i=0;i<52;i++)arr.push(Math.round((ini+step*i)*100)/100);
+  }else{
+    const prom=meta/52;
+    const maxPosible=meta/26;
+    if(fin<prom)fin=Math.ceil(prom*100)/100;
+    if(fin>=maxPosible)fin=Math.floor((maxPosible-1)*100)/100;
+
+    ini=Math.max(1,Math.round(((meta/26)-fin)*100)/100);
+    const step=(fin-ini)/51;
+    let sumaParcial=0;
+
+    for(let i=0;i<51;i++){
+      const val=Math.round((ini+step*i)*100)/100;
+      arr.push(val);
+      sumaParcial=Math.round((sumaParcial+val)*100)/100;
+    }
+    const ultima=Math.round((meta-sumaParcial)*100)/100;
+    arr.push(ultima);
+  }
+  return {arr,cMin:Math.min(...arr),cMax:Math.max(...arr)};
+}
+
+function run(){
+  toggleInputs();
+  const tipo=$('tipo').value;
+  const m=$('mon').value.trim()||'L';
+  const asc=$('ord').value==='asc';
+  const p=$('fec').value.split('-');
+  const start=p.length===3?new Date(+p[0],+p[1]-1,+p[2]):new Date();
+
+  localStorage.setItem('app52v6',JSON.stringify({
+    tipo,ini:$('ini').value,fin:$('fin').value,meta:$('meta').value,mon:m,ord:$('ord').value,fec:$('fec').value,chk
+  }));
+
+  let {arr,cMin,cMax}=calcPlan();
+  if(!asc)arr.reverse();
+
+  let ac=0,saved=0,doneCount=0,h1='',h2='',end=start;
+  rows=[];
+
+  for(let w=1;w<=52;w++){
+    const q=arr[w-1];
+    ac=Math.round((ac+q)*100)/100;
+    const isOk=!!chk[w];
+    if(isOk){saved=Math.round((saved+q)*100)/100;doneCount++;}
+
+    const d=new Date(start);
+    d.setDate(start.getDate()+(w-1)*7);
+    if(w===52)end=d;
+
+    rows.push({w,dt:fDate(d),q:`${m}${fmt(q)}`,ac:`${m}${fmt(ac)}`,ok:isOk});
+    const row=`<tr class="${isOk?'done':''}"><td><b>Sem ${w}</b></td><td>${fDate(d)}</td><td class="ap">${m}${fmt(q)}</td><td><b>${m}${fmt(ac)}</b></td><td><span class="box ${isOk?'ok':''}" onclick="tg(${w})"></span></td></tr>`;
+    if(w<=26)h1+=row;else h2+=row;
+  }
+
+  $('t1').innerHTML=h1;
+  $('t2').innerHTML=h2;
+  const labelModo=tipo==='clasico'?'Escalonado clásico':(tipo==='cuotas'?'Escalón inicial a final':'Meta total escalonada');
+  $('tit').textContent=`RETO DE AHORRO 52 SEMANAS: META ${m}${fmt(ac)}`;
+  $('sub').textContent=`${labelModo} (${asc?'Ascendente':'Inverso'}) • ${mYr(start)} a ${mYr(end)}`;
+  $('c1').textContent=fDate(start);
+  $('c2').textContent=fDate(end);
+  $('c3').textContent=`${m}${fmt(cMin)} a ${m}${fmt(cMax)}`;
+  $('c4').textContent=`${m}${fmt(ac)}`;
+
+  const pct=ac>0?Math.min(100,Math.round((saved/ac)*100)):0;
+  const rem=Math.max(0,Math.round((ac-saved)*100)/100);
+  $('p-saved').textContent=`Ahorrado: ${m}${fmt(saved)}`;
+  $('p-pct').textContent=`${pct}% (${doneCount}/52 sem)`;
+  $('p-fill').style.width=`${pct}%`;
+  $('p-rem').textContent=`Falta: ${m}${fmt(rem)}`;
+  $('p-goal').textContent=`Meta: ${m}${fmt(ac)}`;
+}
+
+window.tg=w=>{chk[w]?delete chk[w]:chk[w]=1;run()};
+window.rst=()=>{if(confirm('¿Desmarcar todas las semanas para iniciar una hoja nueva?')){chk={};run()}};
+
+window.makePDF=async()=>{
+  const esc=s=>s.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)').replace(/[^\x20-\x7E]/g,c=>({á:'a',é:'e',í:'i',ó:'o',ú:'u',Á:'A',É:'E',Í:'I',Ó:'O',Ú:'U',ñ:'n',Ñ:'N','•':'-'}[c]||' '));
+  const txt=(x,y,s,sz,b,r,g,bl)=>`${r} ${g} ${bl} rg BT /F${b?2:1} ${sz} Tf ${x.toFixed(1)} ${y.toFixed(1)} Td (${esc(s)}) Tj ET\n`;
+  const box=(x,y,w,h,r,g,bl,op)=>`${r} ${g} ${bl} ${op==='f'?'rg':'RG'} ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re ${op}\n`;
+  let c='0.5 w\n';
+  const W=612,M=32,tw=(W-2*M-16)/2;
+  c+=txt(306-($('tit').textContent.length*3.4),745,$('tit').textContent,12.5,1,0.06,0.46,0.43);
+  c+=txt(306-($('sub').textContent.length*2),731,$('sub').textContent,8,0,0.39,0.45,0.55);
+  c+='0.06 0.46 0.43 RG 1.2 w 32 723 m 580 723 l S 0.5 w\n';
+  const cw=(W-2*M-24)/4,cs=[['c1','Fecha de inicio'],['c2','Fecha de cierre'],['c3','Rango semanal'],['c4','Total acumulado']];
+  cs.forEach((k,i)=>{
+    const x=M+i*(cw+8);
+    c+=box(x,682,cw,34,0.94,0.99,0.98,'f')+box(x,682,cw,34,0.6,0.96,0.89,'S');
+    const v=$(k[0]).textContent;
+    c+=txt(x+cw/2-v.length*2.5,702,v,9,1,0.06,0.46,0.43)+txt(x+cw/2-k[1].length*1.8,689,k[1],7,0,0.28,0.33,0.41);
+  });
+  const y0=656,hh=18,rh=21.5;
+  for(let col=0;col<2;col++){
+    const x0=M+col*(tw+16),xs=[x0+10,x0+56,x0+114,x0+168,x0+232];
+    c+=box(x0,y0,tw,hh,0.06,0.46,0.43,'f');
+    ['Semana','Fecha','Aporte','Acumulado','Listo'].forEach((h,i)=>c+=txt(xs[i],y0+6,h,7.5,1,1,1,1));
+    for(let r=0;r<26;r++){
+      const it=rows[col*26+r],y=y0-(r+1)*rh;
+      if(r%2===1)c+=box(x0,y,tw,rh,0.97,0.98,0.99,'f');
+      c+=`0.88 0.91 0.94 RG ${x0} ${y} m ${x0+tw} ${y} l S\n`;
+      c+=txt(xs[0],y+7.5,`Sem ${it.w}`,7.5,1,0.12,0.16,0.23)+txt(xs[1],y+7.5,it.dt,7.5,0,0.28,0.33,0.41)+txt(xs[2],y+7.5,it.q,7.5,1,0.06,0.46,0.43)+txt(xs[3],y+7.5,it.ac,7.5,1,0.12,0.16,0.23);
+      c+=box(xs[4]+5,y+6,8.5,8.5,0.06,0.46,0.43,it.ok?'f':'S');
+    }
+  }
+  c+=txt(105,68,'Consejo: Puedes seguir las fechas en orden o marcar cualquier casilla segun tus ingresos semanales hasta completar las 52 semanas.',7.2,0,0.39,0.45,0.55);
+  const objs=['1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj','2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj','3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R/F2 5 0 R>>>>/Contents 6 0 R>>endobj','4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>endobj','5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>endobj',`6 0 obj<</Length ${c.length}>>stream\n${c}endstream\nendobj`];
+  let pdf='%PDF-1.4\n',offs=[];
+  objs.forEach(o=>{offs.push(pdf.length);pdf+=o+'\n'});
+  const xref=pdf.length;
+  pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+`trailer<</Size ${objs.length+1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`;
+
+  const bytes=new Uint8Array(pdf.length);
+  for(let i=0;i<pdf.length;i++)bytes[i]=pdf.charCodeAt(i);
+  const blob=new Blob([bytes],{type:'application/pdf'});
+  const file=new File([blob],'Calendario_Ahorro_52_Semanas.pdf',{type:'application/pdf'});
+
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Calendario de Ahorro 52 Semanas'});return;}catch(e){}
+  }
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='Calendario_Ahorro_52_Semanas.pdf';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+};
+
+['tipo','ini','fin','meta','fec','mon','ord'].forEach(i=>$(i).oninput=run);
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+run();
+</script>
+</body>
+</html>
